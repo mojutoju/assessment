@@ -1,0 +1,687 @@
+<html>
+<head>
+<link rel="stylesheet" href="../../style.css">
+<title>CO3105/4105/7105 Assignment 2A</title>
+</head>
+<body>
+<h1>CO3105/4105/7105 Assignment 2A</h1>
+
+<p>
+Released Nov 28, 2022;
+<b>Deadline Monday Jan 9, 2023 5:00 pm</b>
+</p>
+<p>
+This assignment is worth 20% of the module mark.
+</p>
+<p>
+This assignment assesses your knowledge in inheritance and virtual functions,
+operator overloading, exceptions, STL and smart pointers.
+You will need to know the materials from weeks 16 - 20
+(in addition to basic concepts from earlier weeks).
+</p>
+<p>
+Clarifications and amendments may be announced on the 
+<a href="https://blackboard.le.ac.uk/webapps/discussionboard/do/forum?action=list_threads&course_id=_52709_1&forum_id=137209&nav=discussion_board&conf_id=_126503_1&content_id=_3724581_1&mode=cpview">
+Blackboard discussion forum</a> for this assignment. 
+<b>You are expected to read the forum.</b>
+</p>
+
+<h2>Overview and the class hierarchy</h2>
+
+<p>
+You are the most junior programmer in a development team, whose task is to
+develop some type of role-play game. Your team leader hasn't decided the
+details of the game yet, but you are tasked with developing some C++ classes
+to model some entities (namely players and objects) and their basic
+interactions, as described below.
+It is not a full game and most of the actual game logic are not being
+implemented here.
+</p>
+<p>
+Your team leader hasn't really played much computer games, so some of 
+the requirements below may seem too simplistic or just outright weird.
+Also, you may find some design decisions that you are asked to follow to be
+rather odd.
+It is almost like your team leader wants to test your knowledge on 
+inheritance and virtual functions for some reason...
+</p>
+<p>
+A number of different classes are used to model different "objects" and
+"players" of the game.
+The class hierarchy is as shown in this diagram:
+</p>
+<pre>
+          Object                             Player
+            |                                  |
+  -------------------------             -----------------
+  |       |        |      |             |        |      |
+Food    Weapon   Armour   ...         Fighter  Healer  ...
+</pre>
+<p>
+Again, since your team leader has not made up their mind on what exactly
+will be in the game, there may be some further types of objects or players
+to be added in the future (though not in this assignment).
+</p>
+
+<h2>The Object class hierarchy</h2>
+
+<h3>The Object class</h3>
+
+<p>
+The <code>Object</code> class represent objects in the game that can be "picked up"
+and "used" by players, such as food, weapon, armour etc.
+All objects have a name (a string) and a value (a non-negative integer).
+Objects are assumed to have unique names.
+The meaning of "value" is different depending on what subtype
+of object it is.
+</p>
+<p>
+In addition, you probably want each object to "know" who has picked it
+up, and therefore it probably should have a pointer that points to the
+"owner" of the object. Initially an object does not have any owner,
+and it can only be owned by one player (the one who picked it up via the
+<code>pickup()</code> function of the <code>Player</code> class).
+For technical reason not to be explained here, it would be more convenient
+to use a raw pointer (<code>Player*</code>) to record who the owner is, 
+rather than a smart pointer. Thus the member variables of the 
+<code>Object</code> class may look like this:
+<pre>
+class Object {
+  ... // other member variables
+  Player* owner_; // pointer to the Player who picked up this object
+};
+</pre>
+</p>
+<p>
+The <code>Object</code> class is a base class and should be abstract 
+(no object of this class should be instantiated). Nevertheless, it has a 
+constructor:
+</p>
+<ul>
+<li>
+<code>Object(string name, int value)</code><br/>
+Constructor with parameters specifying the name of the object and its value.
+The value must not be negative, otherwise the constructor should throw a 
+<code>std::invalid_argument</code> exception.
+It should also initialise the object to have no owner (for example
+by setting the <code>owner_</code> pointer to nullptr).
+</li>
+</ul>
+<p>
+Furthermore, the <code>Object</code> class (and all its subclasses) should 
+support the following functions:
+</p>
+<ul>
+<li>
+<code>string getName()</code><br/>
+Return the name of the object.
+</li>
+<br/>
+<li>
+<code>int getValue()</code><br/>
+Return the value of the object.
+</li>
+<br/>
+<li>
+<code>string print()</code><br/>
+Return a string that has the following contents:
+<pre>
+XXX, name: YYY, value: ZZZ
+</pre>
+where XXX is the type of the object (so one of Food, Weapon or Armour, so far),
+YYY is the name of the object and ZZZ is its value.
+Here are three examples:
+<pre>
+Food, name: apple, value: 5
+
+Weapon, name: sword, value: 20
+
+Armour, name: helmet, value: 10
+</pre>
+(In this and all other similar functions that return a string to give
+a description of an object, you must have the exact whitespaces as shown,
+otherwise you will not pass the test cases.
+All whitespaces you see here are the single space character (' ').
+Please be careful not to include any extra invisible whitespaces.
+In the case of multi-line strings, the lines should be separated by
+inserting a '\n' character, but there should be no
+'\n' after the final line.
+All these functions return a string, or write something to the given
+output stream; the functions themselves do not print anything to the 
+screen directly.)
+</li>
+<br/>
+<li>
+<code>void use()</code><br/>
+Apply the effect of that object to the player who currently owns them.
+The effect depends on what type of object it is, as specified in the
+subclasses below.
+This should <b>not</b> be a public member function; it should only be 
+accessed by the <code>Player</code> class (and its subclasses). See the
+<code>use()</code> function in the Player section.
+</li>
+<br/>
+<li>
+<code>ostream& operator<<(ostream& os, const Object& o)</code>:<br/>
+Overloaded output stream redirection operator, to be implemented 
+as a friend function (not a member function) of the <code>Object</code> class.
+It prints the content of the given object, as returned by the 
+<code>print()</code> function, to the specified output stream.
+</li>
+</ul>
+
+<h3>The Food class</h3>
+
+<p>
+In addition to those inherited from the parent class, 
+all Food objects should support the following operation:
+</p>
+
+<ul>
+<li>
+<code>Food(string name, int value)</code><br/>
+Constructor of a food item, specifying its name and value.
+</li>
+<br/>
+<li>
+<code>void use()</code><br/>
+Using a food object increases the owner's stamina by the value of the
+object, but is capped at the maximum stamina of 100.
+For example, if a player has stamina 80 and uses a food item of value 10,
+the stamina becomes 90. But if the food item has value 25 instead, the
+stamina becomes 100 (not 105).
+A food item once used is "consumed" and will no longer be in the player's
+list of items.
+</li>
+</ul>
+
+<h3>The Weapon class</h3>
+
+<p>
+In addition to those inherited from the parent class, 
+all Weapon objects should support the following functions:
+</p>
+
+<ul>
+<li>
+<code>Weapon(string name, int value)</code><br/>
+Constructor of a weapon, specifying its name and value.
+</li>
+<br/>
+<li>
+<code>void use()</code>
+<p>
+Using a weapon means it is listed under the "weapon in use" of its
+owner (see the <code>print()</code> function of the <code>Player</code> class),
+and it affects the attacking strength of the player
+(see the <code>attack()</code> function of the <code>Fighter</code> class).
+</p><p>
+Only one weapon can be in use at any time. If this
+function is called while the player is already using another weapon, 
+the old weapon will be "unloaded" and the new weapon takes its place as the
+"weapon in use". The old weapon remains in the player's possession 
+(and the player may choose to use it again later).
+A weapon once in use will remain in use until it is replaced by another
+weapon.
+<!--For example, ...-->
+</p><p>
+As you will see in the Fighter section, only fighters can attack, and
+therefore really make use of a weapon. Nevertheless,
+any player type can use the <code>pickup()</code> and 
+<code>use()</code> functions to pick up and indeed "use" weapons,
+but if they don't have an <code>attack()</code> 
+function it is pointless for them to do so.
+</p>
+</li>
+</ul>
+
+<h3>The Armour class</h3>
+
+<p>
+In addition to those inherited from the parent class, 
+all Armour objects should support the following functions:
+</p>
+<ul>
+<li>
+<code>Armour(string name, int value)</code><br/>
+Constructor, specifying the name and value of this piece of armour.
+</li>
+<br/>
+<li>
+<code>void use()</code>
+<p>
+Using an armour means it is listed under the "armour in use" of its
+owner (see the <code>print()</code> function of the <code>Player</code>
+class), and it affects the defending strength of the player
+(see the <code>attack()</code> function of the <code>Fighter</code> class).
+</p><p>
+Unlike weapons, players can use multiple armour items at the same time.
+A call to this function will add this armour to the list of
+armour "in use" by this player. An armour once used will continue to be
+in use forever.
+</p>
+</li>
+</ul>
+
+<h2>The Player class hierarchy</h2>
+
+<h3>The Player class</h3>
+
+<p>
+The <code>Player</code> class models a player in the game.
+Each player has a health value and a stamina value; both are integers
+between 0 and 100. 
+They may also carry a number of objects with them, which (as you will see
+below) you probably want to represent as a collection of unique pointers.
+Each player may, at any one moment, have a "weapon in use" and/or
+a number of "armour in use".
+</p>
+<p>
+If a player's health drops to 0, they are dead. Dead players can no longer
+take any action and are supposed to be "removed" from the game somehow, 
+but once again your team leader hasn't figured out what to do with them yet,
+so in the following a player may be dead but still around, and some special 
+action needs to be taken about them.
+</p>
+<p>
+The <code>Player</code> class is a base class and should be abstract 
+(no object of this class should be instantiated). Nevertheless, 
+it has a constructor:
+</p>
+<ul>
+<li>
+<code>Player(string name)</code><br/>
+Constructor with parameter specifying the name of the player.
+It should also initialise its health and stamina to 100, and to have
+an empty list of items. It is therefore not using any weapon or armour.
+</li>
+</ul>
+<p>
+Furthermore, the <code>Player</code> class (and all its subclasses) should 
+support the following functions:
+</p>
+<ul>
+<li>
+<code>string getName()</code><br/>
+Return the name of this player.
+</li>
+<br/>
+<li>
+<code>int getHealth()</code><br/>
+Return the health value of this player.
+</li>
+<br/>
+<li>
+<code>int getStamina()</code><br/>
+Return the stamina value of this player.
+</li>
+<br/>
+<li>
+<code>void pickup(unique_ptr&lt;Object&gt; p)</code>
+<p>
+Add the object pointed to by the specified unique pointer to the list of
+items of this player. The object is represented by a unique pointer with the
+intention being that once it is picked up by one player, it cannot be 
+picked up by another player. As a result, it is to be passed into this
+function with the <code>std::move()</code> function like this:
+</p>
+<pre>
+unique_ptr&lt;Food&gt; apple = make_unique&lt;Food&gt;("apple", 5);
+Fighter alice("alice");
+alice.pickup(std::move(apple));
+</pre>
+<p>
+and you probably would want to use the same mechanism to "move" the
+incoming pointer to some data structure that stores all pointers to objects
+this player currently has.
+</p><p>
+If the player is already dead, throw a <code>std::logic_error</code>
+exception and do not do any of the above.
+</p>
+</li>
+
+<li>
+<code>bool use(string name)</code>
+<p>
+"Use" the item with the specified name. Depending on what type of item it
+is, its effect of being used is different. Essentially you should call 
+the <code>use()</code> function of that object and let it do its job.
+</p><p>
+If the player is already dead, throw a <code>std::logic_error</code>
+exception and do not do anything.
+If the player does not currently possess an item of that name, return false
+(and do nothing else).
+Otherwise (the item is successfully used), return true.
+</p>
+</li>
+
+<li>
+<code>string getInventory()</code>
+<p>
+Return a string listing all the items
+the player currently possesses, in precisely the following format:
+</p>
+<pre>
+List of items:
+ Food, name: xxx, value: xx
+ Weapon, name: xxx, value: xx
+ ...
+</pre>
+<p>
+where each line prints the details of an object exactly as in the
+<code>print()</code> function of the <code>Object</code> class, but with
+one extra space character in front.
+</p><p>
+The items must be listed in the order they were picked up.
+</p><p>
+If there are no items, the one-line string 
+"<code>List of items: none</code>" should be returned instead.
+</p><p>
+Any weapon/armour that are added as "in use" by the <code>use()</code>
+function continue to appear under this list of items. Likewise any weapon
+"unloaded" (replaced by another weapon as "in use")
+is also listed here.
+</p>
+</li>
+
+<li>
+<code>string print()</code><br/>
+Return a string that prints all information about the player, in exactly
+the following format:
+<pre>
+Name: xxx
+Type: xxx
+Health: xx
+Stamina: xx
+List of items:
+ xxx, name: xxx, value: xx
+ xxx, name: xxx, value: xx
+Weapon in use: xxx
+Armour in use: xxx, xxx
+</pre>
+<p>
+It should be clear what most of this means. The type is either Fighter or
+Healer. The "List of items" is exactly the output produced by 
+<code>getInventory()</code>. The weapon/armour in use states the names of
+the weapon/armour. If no weapon/armour is in use, it should say
+"none" in place of the xxx. Multiple armours in use should be listed in the 
+order they were first "used".
+</p><p>
+The line "weapon in use" should not appear for healers, since they cannot
+attack, even though theoretically they can pickup and "use" weapons.
+</p>
+</li>
+
+<li>
+<code>ostream& operator<<(ostream& os, const Player& p)</code><br/>
+Overloaded output stream redirection operator, to be implemented as a
+friend function (not a member function) of the <code>Player</code> class. 
+It prints the contents of the given player, as returned by the 
+<code>print()</code> function, to the specified output stream.
+</li>
+</ul>
+
+<h3>The Fighter class</h3>
+
+<p>
+Fighter is a subclass of Player.
+In addition to those inherited from the parent class,
+the <code>Fighter</code> class should support the following operations:
+</p>
+<ul>
+<li>
+<code>Fighter(string name)</code><br/>
+Constructor, specifying the name of the fighter.
+</li>
+<br/>
+<li>
+<code>bool attack(Player& other)</code><br/>
+Attack the player specified in the parameter. Only fighters can attack
+others, but anyone can be attacked.
+When player A attacks player B, the following should happen:
+<ol>
+<li>
+If A or B is already dead, it should throw a <code>std::logic_error</code>
+exception, and skip all the following.
+Note that the exception is thrown only if A or B is already dead
+<i>before</i> the attack, not as a result of the attack.
+<br/>
+In particular, if B is the one who is already dead, the exception object
+must be constructed with the following string as the argument:
+<code>"Stop! xxx is already dead."</code>
+where xxx is the name of B.
+(In other words, this string is what should be returned when the
+<code>what()</code> function of the exception object is called.)
+</li>
+<li>
+If A's stamina is less than 10, skip all the following and return false.
+</li>
+<li>Reduce A's stamina by 10.</li>
+<li>Define the <i>attacking strength</i> of A to be 10 plus the value of A's
+weapon in use (if no weapon is in use then the attacking strength is just 10),
+and the <i>defending strength</i> of B to be the total value of all B's armour
+in use (if no armour is in use then the defending strength is 0).
+If the attacking strength is greater than the defending strength,
+reduce B's health by the difference in these two values. If B's health
+becomes 0 (or less) as a result of this, then B is dead. 
+Otherwise (if defending strength is greater) nothing happens to B.
+<br/>
+For example, if A is using a weapon of value 30,
+and B has health 10 and is using an armour of value 35, then B's health
+after the attack is reduced to 5.
+</li>
+<li>
+If the attack reduced the opponent's health, return true, otherwise 
+(because A does not have enough stamina or B's defending strength is
+high enough) return false.
+</li>
+</ol>
+</li>
+</ul>
+
+<h3>The Healer class</h3>
+
+<p>
+Healer is a special kind of Player. They cannot attack, but they can 
+heal (increase the health) of other players.
+
+In addition to those inherited from the parent class, 
+the <code>Healer</code> class should support the following operations:
+</p>
+<ul>
+<li>
+<code>Healer(string name)</code><br/>
+Constructor, specifying the name of the healer.
+</li>
+<br/>
+<li>
+<code>bool heal(Player& other)</code><br/>
+Increase the health of the specified player
+<!--(which can be the healer itself)-->
+as follows.
+When player A tries to heal player B, the following should happen:
+<ol>
+<li>
+If A or B is already dead, it should throw a <code>std::logic_error</code>
+exception, and skip all the following.
+</li>
+<li>
+If A's stamina is less than 10, skip all the following and return false.
+</li>
+<li>Reduce A's stamina by 10.</li>
+<li>Increase B's health by 20, but not exceeding 100.
+For example if B's health was 95 before the heal, its health only goes
+up to 100, not 115.
+</li>
+<li>
+If the healing increased B's health, return true, otherwise
+(because A does not have enough stamina or B's health is already 100)
+return false.
+</li>
+</ol>
+</li>
+</ul>
+
+<!--
+Destructor, copy constructor and copy assignment operator are assumed to
+be not required (i.e. the default is adequate). If for some reason 
+they are not adequate for your implementation then you should supply them. 
+-->
+
+<h2>What else needs to change and what cannot be changed</h2>
+
+<p>
+All the classes have no member variables at the moment
+(except the <code>owner_</code> variable in the <code>Object</code> class);
+you will need to decide what protected/private (but not public)
+data members to add to the classes. 
+There are multiple ways to represent the objects and their properties, 
+and there is not necessarily a "best" way.
+<!--For example, a rectangle may be represented by the coordinates of its
+four corners, or in fact only two opposite corners are enough;
+or the coordinates of its centre plus its height and width; or
+many other ways.-->
+You will also need some data structure (preferably from STL) to store the 
+collection of Objects (or unique pointers to Objects) that a Player has.
+</p>
+<p>
+All the classes and their inheritance relationships have been defined for
+you in the Game.h file. 
+However, all the required member functions are only declared in the highest 
+class in the class hierarchy where they are relevant. 
+You will need to decide whether some subclasses should override some of 
+the functions, where in the hierarchy should they be implemented, and 
+whether each function should be made virtual.
+In addition, all top-level classes should be abstract; no instances of 
+<code>Object</code> or <code>Player</code> should be allowed to be created. 
+This means each top-level class must have some pure virtual member functions. 
+</p>
+<p>
+Therefore, you will need to decide whether each function should have the 
+<code>virtual</code>, <code>override</code>, <code>final</code> keywords 
+and/or the <code>= 0</code> pure specifier.
+You may need to duplicate some function declarations and/or their 
+implementations (bodies) to some subclasses, or move them to some other 
+classes (even when the comments say IMPLEMENT ME).
+Please see further notes in the marking criteria about this.
+</p>
+<p>
+You must not change the existing public interface of the classes, other than 
+in relation to inheritance, virtual-ness and pure-ness as explained above. 
+You are allowed to add other public/protected/private member functions, 
+should you want to.
+You are also allowed to add frienships between classes.
+</p>
+<p>
+Do NOT move or remove existing code given to you, except those parts
+labelled as dummy code or in relation to inheritance/virtualness/pureness
+as above.
+In particular you must not change the test suite.
+If you somehow believe you "need" to move or remove
+something (in order for the program to compile, for example),
+you almost certainly did something
+wrong and it would not compile when I test it. Past examples include
+removing header guards, moving constants defined in .h out to .cpp,
+removing function definitions in .h that you decide to not attempt, etc.
+</p>
+
+<h2>Files Provided</h2>
+
+<ul>
+<li><a href="Game.h">Game.h</a></li>
+<li><a href="Game.cpp">Game.cpp</a></li>
+</ul>
+These are the only two files you need to modify/submit. All code written
+by you should be in there.
+<ul>
+<li><a href="main.cpp">main.cpp</a></li>
+</ul>
+This is a simple game that illustrates how the 
+functions can be called.
+<ul>
+<li><a href="GameTester.h">GameTester.h</a></li>
+<li><a href="GameTester.cpp">GameTester.cpp</a></li>
+<li><a href="GameTesterMain.cpp">GameTesterMain.cpp</a></li>
+</ul>
+They are used for the execution testing part (see the next section).
+<ul>
+<li><a href="makefile">makefile</a></li>
+</ul>
+This is a makefile that will compile the main executable and the testing
+suite executable.
+
+<h2>Marking Criteria and Test Suite</h2>
+
+<p>
+See <a href="ms.html">this separate page</a> for the marking criteria.
+</p>
+<p>
+To use the test suite (which is used in the execution testing part of the 
+marking), simply type "make" in a linux terminal (with all 
+the above files in the same folder). It will (assuming you did not break
+Game.h or Game.cpp) produce a GameTesterMain executable file. Run the 
+program by typing
+<pre>
+./GameTesterMain a
+</pre>
+or
+<pre>
+./GameTesterMain a b c d
+</pre>
+which runs a single test case or multiple test cases respectively. 
+We will also demonstrate its use in class. 
+</p>
+<p>
+The given Game.h and Game.cpp files (without your contributions)
+are already compilable with the test suite. 
+It might even pass a few test cases. So, whatever you do, please don't 
+break them...
+</p>
+<p>
+The test suite may not cover all corner cases, so passing all test
+cases does not guarantee your program is 100% correct.
+Also, unfortunately we cannot isolate the testing of the various functions.
+For example to pass those test cases meant for <code>use()</code> you 
+need to also implement <code>pickup()</code> at least partially correctly.
+</p>
+
+<h2>Submission Instructions</h2>
+
+<p>
+Submit your completed work on Blackboard ("Assessment and Feedback" on the 
+left, then "Assignment 2A").
+</p>
+<p>
+<b>Submit only the files Game.h and Game.cpp.</b>
+Just upload them as two separate files with those exact names. 
+DO NOT change their names including 
+upper/lowercase, DO NOT change the extension to .txt or .cpp.txt or some 
+such, DO NOT put them in a Word or pdf file (yes, someone actually did 
+that), DO NOT put them in a zip archive, and DO NOT upload the entire 
+project folder of whatever IDE you are using. Any such problems will incur 
+a penalty. 
+</p>
+<p>
+While you may want to change the main.cpp file for your own testing, 
+it is not part of the submission. The test suites and the makefiles also
+should not be submitted. If you submit them, they will be ignored and I
+will use my own version for testing.
+</p>
+<p>
+This is an <b>individual assignment</b>, and collaboration is not permitted.
+Plagiarism will be treated strictly according to standard university and
+departmental procedures.
+Your submissions will be sent to a plagiarism detection service
+(<a href="https://theory.stanford.edu/~aiken/moss/">MOSS</a>).
+</p>
+<p>
+In line with university policy, marking will be done anonymously. Only 
+the Blackboard-supplied userid / student number will be visible in marking. 
+</p>
+<p>
+For the above two reasons, do not include your name, userid, student number,
+or any other personally identifible information in your programs.
+</p>
+
+</body>
+</html>
